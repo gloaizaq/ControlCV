@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>ControlCV</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+
+
+    <script>
+        if (typeof module === 'object') {
+            window.module = module;
+            module = undefined;
+        }
+    </script>
+
+    <link rel="stylesheet" href="./resources/fontawesome/css/all.css">
+    <script defer src="./resources/fontawesome/js/all.js"></script>
+
+    <script src="./resources/jquery-3.6.0.min.js"></script>
+
+    <link rel="stylesheet" href="./resources/bootstrap-4.3.1-dist/css/bootstrap.min.css">
+    <script src="./resources/bootstrap-4.3.1-dist/js/bootstrap.min.js"></script>
+    <script src="./resources/bootstrap-4.3.1-dist/js/bootstrap.bundle.min.js"></script>
+
+    <style type="text/css">
+        .btn-circle.btn-xl {
+            width: 50px;
+            height: 50px;
+            padding: 10px 16px;
+            border-radius: 35px;
+            font-size: 12px;
+            text-align: center;
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+        }
+    </style>
+
+</head>
+
+<body style="background: white;">
+    <div class="container">
+        <div id="noDataMessage" class="card text-center m-3">
+            <div class="card-header">
+                No hay datos todavía
+            </div>
+            <div class="card-body">
+                <p class="card-text">Use el botón "Agregar" para empezar.</p>
+            </div>
+        </div>
+
+        <div id="cardsContainer" class="card-columns m-3"></div>
+        <div style ="position: absolute; bottom: 15px;right:15px;">
+            <button id="btnAdd" type="button" class="btn btn-success btn-circle btn-xl">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    function createCard(id, title, text) {
+        var summary = text.substring(0, 20) + '...';
+
+        return `
+        <div class="card">
+            <div class="card-header">${title}</div>
+            <div class="card-body">
+                <p class="card-text">
+                    <small>${summary}</small>
+                </p>
+                <div class="row">
+                    <div class="col">
+                        <button id=remove-${id} type="button" class="btn btn-secondary btn-sm remove-button float-left">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button id=${id} type="button" class="btn btn-secondary btn-sm paste-button float-right">
+                            <i class="fas fa-paste"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`
+    }
+
+    function loadCards(items) {
+        console.log('items is', items);
+        if (items !== undefined && items.length > 0) {
+            $('#noDataMessage').hide();
+            outputCards = "";
+            items.forEach(item => {
+                outputCards += createCard(item.id, item.title, item.text);
+            });
+            $("#cardsContainer").html(outputCards);
+        } else {
+            $('#noDataMessage').show();
+            $("#cardsContainer").html("");
+        }
+        this.addPasteListeners();
+        this.addRemoveListeners();
+    }
+
+    function addPasteListeners() {
+        let pasteButtons = document.getElementsByClassName("paste-button");
+        for (const pasteButton of pasteButtons) {
+            pasteButton.addEventListener("click", function(event) {
+                ipcRenderer.send('btnPasteClicked', pasteButton.id);
+            });
+        }
+    }
+
+    function addRemoveListeners() {
+        let removeButtons = document.getElementsByClassName("remove-button");
+        for (const removeButton of removeButtons) {
+            removeButton.addEventListener("click", function(event) {
+                const id = removeButton.id.split('remove-')[1];
+                ipcRenderer.send('btnRemoveClicked', id);
+            });
+        }
+    }
+
+    const ipcRenderer = require('electron').ipcRenderer;
+
+    const btnAdd = document.getElementById('btnAdd');
+    btnAdd.addEventListener('click', function () {
+        ipcRenderer.send("btnAdd");
+    });
+
+    ipcRenderer.send('get-items');
+    ipcRenderer.on('populate-items', function (event, items) {
+        loadCards(items);
+    });
+
+    ipcRenderer.on('load-items', function (event, items) {
+        loadCards(items);
+    });
+
+    ipcRenderer.on('remove-done', function (event, items) {
+        loadCards(items);
+    });
+
+    ipcRenderer.on('btnSave-task-finished', function (event, items) {
+        loadCards(items);
+    });
+</script>
+
+</html>
